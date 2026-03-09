@@ -48,9 +48,6 @@ export function Hero() {
           <span className="text-text-muted uppercase">Updated live</span>
         </div>
       </div>
-
-      {/* Ghost cards preview area */}
-      <div className="relative w-full h-64 mt-auto" />
     </>
   );
 }

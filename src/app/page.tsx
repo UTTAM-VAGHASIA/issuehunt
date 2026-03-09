@@ -11,7 +11,7 @@ export default function LandingPage() {
         <div className="flex items-center gap-2">
           <Sparkles size={22} className="text-accent" fill="#F97316" />
           <h1 className="text-xl font-medium tracking-tight text-text-primary font-sans">
-            issuehunter
+            issuehunt
           </h1>
         </div>
         <Link
@@ -22,18 +22,16 @@ export default function LandingPage() {
         </Link>
       </header>
 
-      {/* Main content */}
+      {/* Main content — GhostCards lives INSIDE here, at the bottom */}
       <main className="mx-auto flex w-full max-w-[680px] flex-1 flex-col items-center px-6 pt-16 text-center">
         <Hero />
+        <GhostCards />
       </main>
 
       {/* Footer */}
       <footer className="mx-auto w-full max-w-[680px] px-6 py-12 text-center font-mono text-[10px] text-text-muted uppercase tracking-widest">
-        © 2024 IssueHunter. Built for the community.
+        © 2026 IssueHunt. Built for the community.
       </footer>
-
-      {/* Ghost cards — scrim + preview at bottom of main */}
-      <GhostCards />
     </div>
   );
 }
