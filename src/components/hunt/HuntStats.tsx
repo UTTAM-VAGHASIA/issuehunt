@@ -16,7 +16,7 @@ export function HuntStats({ swiped, saved, skipped }: HuntStatsProps) {
   return (
     <div>
       <MonoText size="xs" muted className="uppercase tracking-widest block mb-4">
-        Today's Hunt
+        Today&apos;s Hunt
       </MonoText>
       <div className="flex flex-col gap-3">
         {stats.map(({ label, value }) => (

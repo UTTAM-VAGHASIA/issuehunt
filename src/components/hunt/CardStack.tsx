@@ -60,7 +60,7 @@ export function CardStack({ issues, onSave, onSkip }: CardStackProps) {
   if (!currentIssue) {
     return (
       <div className="flex flex-col items-center justify-center h-[520px] gap-3">
-        <p className="font-mono text-[14px] text-text-muted">You've seen all issues! 🎉</p>
+        <p className="font-mono text-[14px] text-text-muted">You&apos;ve seen all issues!</p>
         <p className="font-sans text-[12px] text-text-muted">Check back tomorrow for more.</p>
       </div>
     );
