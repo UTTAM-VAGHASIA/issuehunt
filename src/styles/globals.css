@@ -4,9 +4,29 @@
 @import "@fontsource/jetbrains-mono/400.css";
 @import "@fontsource/jetbrains-mono/500.css";
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
+
+@theme {
+  /* Colors */
+  --color-background: #0A0A0F;
+  --color-surface: #111118;
+  --color-border: #1E1E2E;
+  --color-accent: #F97316;
+  --color-text-primary: #F1F5F9;
+  --color-text-muted: #6B7280;
+  --color-success: #22C55E;
+  --color-danger: #EF4444;
+  --color-teal: #14B8A6;
+
+  /* Fonts */
+  --font-sans: "Inter", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
+
+  /* Border radii */
+  --radius-card: 16px;
+  --radius-btn: 8px;
+  --radius-tag: 6px;
+}
 
 @layer base {
   html {
