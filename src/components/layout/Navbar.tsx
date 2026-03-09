@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Github } from "lucide-react";
+import { Github, Sparkles } from "lucide-react";
 import { MonoText } from "@/components/ui/MonoText";
 import { Avatar } from "@/components/ui/Avatar";
 import { MOCK_USER } from "@/lib/mock-data";
@@ -14,7 +14,7 @@ export function Navbar({ variant = "landing" }: NavbarProps) {
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-8 py-5 bg-background border-b border-border">
       <Link href="/" className="flex items-center gap-2">
-        <span className="text-accent text-xl font-mono">◎</span>
+        <Sparkles size={20} className="text-accent" fill="#F97316" />
         <span className="font-sans font-medium text-text-primary text-[15px] tracking-tight">
           issuehunt
         </span>

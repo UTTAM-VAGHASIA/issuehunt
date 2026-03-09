@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import { Crosshair, Sprout, ChevronDown, Check } from "lucide-react";
+import { Sparkles, Crosshair, Sprout, ChevronDown, Check } from "lucide-react";
 import { MOCK_USER } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
@@ -35,7 +35,7 @@ export default function ModePage() {
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2.5">
             <div className="bg-accent p-1.5 rounded-lg flex items-center justify-center">
-              <Crosshair size={20} className="text-white" />
+              <Sparkles size={20} className="text-white" fill="white" />
             </div>
             <h1 className="text-xl font-bold tracking-tight text-text-primary font-sans">
               IssueHunt

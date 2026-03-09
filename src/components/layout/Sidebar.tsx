@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Avatar } from "@/components/ui/Avatar";
 import { MonoText } from "@/components/ui/MonoText";
@@ -21,7 +22,7 @@ export function Sidebar() {
     <aside className="hidden md:flex flex-col w-[220px] flex-shrink-0 h-screen sticky top-0 bg-background border-r border-border">
       <div className="px-5 pt-6">
         <Link href="/" className="flex items-center gap-2">
-          <span className="text-accent text-xl font-mono">◎</span>
+          <Sparkles size={18} className="text-accent" fill="#F97316" />
           <span className="font-sans font-medium text-text-primary text-[15px]">issuehunt</span>
         </Link>
 
