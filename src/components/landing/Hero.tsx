@@ -1,56 +1,56 @@
 import Link from "next/link";
-import { MonoText } from "@/components/ui/MonoText";
 
 export function Hero() {
   return (
-    <div className="flex flex-col items-center text-center max-w-[680px] mx-auto px-4">
-      <MonoText
-        className="text-accent tracking-[0.1em] uppercase text-[12px] mb-6"
-        size="xs"
-      >
+    <>
+      {/* Eyebrow */}
+      <p className="font-mono text-[10px] font-bold tracking-[0.2em] text-accent uppercase mb-6">
         Open Source Contribution
-      </MonoText>
+      </p>
 
-      <h1
-        className="font-sans font-medium text-text-primary leading-[1.15] mb-5"
-        style={{ fontSize: "clamp(36px, 5vw, 52px)" }}
-      >
-        Find issues worth
-        <br />
+      {/* Headline */}
+      <h2 className="text-[52px] font-medium leading-[1.1] tracking-tight text-text-primary mb-6">
+        Find issues worth <br />
         your time.
-      </h1>
+      </h2>
 
-      <p className="font-sans text-[18px] text-text-muted leading-relaxed max-w-[420px]">
-        Stop searching. Start contributing. IssueHunt matches open source GitHub issues to your
-        exact skill set — or helps you explore a new language.
+      {/* Subheadline */}
+      <p className="mx-auto max-w-[420px] text-lg text-text-muted leading-relaxed mb-10">
+        Stop searching. Start contributing. We aggregate the best opportunities from across the
+        open-source ecosystem.
       </p>
 
-      <Link
-        href="/mode"
-        className="mt-10 inline-flex items-center gap-2 bg-accent text-background font-sans font-medium text-[15px] px-7 py-[14px] rounded-btn transition-all hover:bg-[#EA6C10] hover:scale-[1.02]"
-      >
-        Start Hunting →
-      </Link>
-
-      <p className="mt-3 text-[13px] text-text-muted font-sans">
-        Free · No credit card · Login with GitHub
-      </p>
-
-      <div className="mt-12 flex items-center gap-3 flex-wrap justify-center">
-        <MonoText size="xs">
-          <span className="text-text-primary">127,439</span>{" "}
-          <span className="text-text-muted">issues available</span>
-        </MonoText>
-        <span className="text-border">·</span>
-        <MonoText size="xs">
-          <span className="text-text-primary">43</span>{" "}
-          <span className="text-text-muted">languages</span>
-        </MonoText>
-        <span className="text-border">·</span>
-        <MonoText size="xs" muted>
-          Updated live
-        </MonoText>
+      {/* CTA */}
+      <div className="flex flex-col items-center gap-4 mb-16">
+        <Link
+          href="/mode"
+          className="flex items-center justify-center rounded-lg bg-accent px-7 py-3.5 text-sm font-bold text-background transition-transform hover:scale-105"
+        >
+          Start Hunting →
+        </Link>
+        <p className="text-xs text-text-muted font-medium font-sans">
+          Free · No credit card · Login with GitHub
+        </p>
       </div>
-    </div>
+
+      {/* Stats row — with border */}
+      <div className="flex flex-wrap items-center justify-center gap-x-8 gap-y-4 font-mono text-xs border-y border-[rgba(30,30,46,0.5)] py-6 mb-20 w-full">
+        <div className="flex items-center gap-2">
+          <span className="text-text-primary">127,439</span>
+          <span className="text-text-muted uppercase">issues available</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-text-primary">43</span>
+          <span className="text-text-muted uppercase">languages</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <span className="text-[10px] text-success">●</span>
+          <span className="text-text-muted uppercase">Updated live</span>
+        </div>
+      </div>
+
+      {/* Ghost cards preview area */}
+      <div className="relative w-full h-64 mt-auto" />
+    </>
   );
 }
