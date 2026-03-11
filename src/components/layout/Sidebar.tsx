@@ -1,22 +1,31 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import Image from "next/image";
+import { usePathname, useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Avatar } from "@/components/ui/Avatar";
 import { MonoText } from "@/components/ui/MonoText";
-import { MOCK_USER } from "@/lib/mock-data";
+import { useUser } from "@/lib/hooks/useUser";
+import { createClient } from "@/lib/supabase/client";
 
 const navItems = [
   { label: "Hunt", href: "/hunt" },
-  { label: "Saved", href: "/saved", badge: MOCK_USER.savedCount },
+  { label: "Saved", href: "/saved" },
   { label: "History", href: "/history" },
   { label: "Settings", href: "/settings" },
 ];
 
 export function Sidebar() {
   const pathname = usePathname();
+  const router = useRouter();
+  const user = useUser();
+
+  const handleSignOut = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/");
+  };
 
   return (
     <aside className="hidden md:flex flex-col w-[220px] flex-shrink-0 h-full bg-background border-r border-border">
@@ -40,22 +49,34 @@ export function Sidebar() {
                 )}
                 {item.label}
               </div>
-              {item.badge && (
-                <span className="text-[11px] font-mono bg-accent text-background px-2 py-0.5 rounded-full">
-                  {item.badge}
-                </span>
-              )}
             </Link>
           );
         })}
       </nav>
 
       <div className="mt-auto px-5 pb-6 border-t border-border pt-4">
-        <div className="flex items-center gap-2 mb-1">
-          <Avatar src={MOCK_USER.avatar} alt={MOCK_USER.name} size={32} />
-          <MonoText size="sm">{MOCK_USER.username}</MonoText>
-        </div>
-        <button className="text-[12px] text-text-muted hover:text-danger transition-colors mt-1 ml-10">
+        {user && (
+          <div className="flex items-center gap-2 mb-1">
+            {user.avatar ? (
+              <Image
+                src={user.avatar}
+                alt={user.name}
+                width={32}
+                height={32}
+                className="rounded-full object-cover flex-shrink-0"
+              />
+            ) : (
+              <div className="w-8 h-8 rounded-full bg-surface border border-border flex items-center justify-center text-xs text-text-muted font-mono flex-shrink-0">
+                {user.username?.[0]?.toUpperCase() ?? "?"}
+              </div>
+            )}
+            <MonoText size="sm">@{user.username}</MonoText>
+          </div>
+        )}
+        <button
+          onClick={handleSignOut}
+          className="text-[12px] text-text-muted hover:text-danger transition-colors mt-1 ml-10"
+        >
           disconnect
         </button>
       </div>

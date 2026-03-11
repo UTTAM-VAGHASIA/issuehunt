@@ -3,10 +3,10 @@
 import Link from "next/link";
 import Image from "next/image";
 import { Sparkles } from "lucide-react";
-import { MOCK_USER } from "@/lib/mock-data";
+import { useUser } from "@/lib/hooks/useUser";
 
 export function AppHeader() {
-  const firstName = MOCK_USER.name.split(" ")[0].toLowerCase();
+  const user = useUser();
 
   return (
     <header
@@ -25,18 +25,28 @@ export function AppHeader() {
         </Link>
 
         {/* User pill */}
-        <div className="flex items-center gap-3 bg-surface border border-border px-3 py-1.5 rounded-full">
-          <span className="text-sm font-medium text-text-primary font-sans">{firstName}</span>
-          <div className="w-8 h-8 rounded-full overflow-hidden border border-[rgba(249,115,22,0.3)] flex-shrink-0">
-            <Image
-              src={MOCK_USER.avatar}
-              alt={MOCK_USER.name}
-              width={32}
-              height={32}
-              className="rounded-full object-cover"
-            />
+        {user && (
+          <div className="flex items-center gap-3 bg-surface border border-border px-3 py-1.5 rounded-full">
+            <span className="text-sm font-medium text-text-primary font-sans">
+              {user.username || user.name.split(" ")[0].toLowerCase()}
+            </span>
+            <div className="w-8 h-8 rounded-full overflow-hidden border border-[rgba(249,115,22,0.3)] flex-shrink-0">
+              {user.avatar ? (
+                <Image
+                  src={user.avatar}
+                  alt={user.name}
+                  width={32}
+                  height={32}
+                  className="rounded-full object-cover"
+                />
+              ) : (
+                <div className="w-full h-full bg-surface flex items-center justify-center text-xs text-text-muted font-mono">
+                  {user.username?.[0]?.toUpperCase() ?? "?"}
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
       </div>
     </header>
   );

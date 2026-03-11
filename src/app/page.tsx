@@ -65,6 +65,20 @@ export default async function LandingPage() {
 
       {/* Main content */}
       <main className="mx-auto flex w-full max-w-[680px] flex-1 flex-col items-center px-6 pt-16 text-center">
+        {user && (
+          <div className="flex items-center gap-3 mb-8 bg-surface border border-border rounded-full px-5 py-2.5">
+            {user.user_metadata?.avatar_url && (
+              <img
+                src={user.user_metadata.avatar_url}
+                alt={user.user_metadata.user_name}
+                className="w-7 h-7 rounded-full"
+              />
+            )}
+            <span className="font-mono text-[13px] text-text-primary">
+              Welcome back, <span className="text-accent">@{user.user_metadata?.user_name}</span>
+            </span>
+          </div>
+        )}
         <Hero isLoggedIn={!!user} />
         <GhostCards issues={issues} />
       </main>
