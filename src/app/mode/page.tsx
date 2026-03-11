@@ -7,19 +7,10 @@ import { AppHeader } from "@/components/layout/AppHeader";
 import { useUser } from "@/lib/hooks/useUser";
 import { cn } from "@/lib/utils";
 
-const ALL_LANGUAGES = [
-  "ABAP", "ActionScript", "Ada", "Agda", "Alice", "Apex", "APL", "Assembly",
-  "Awk", "Bash", "Basic", "Brainfuck", "C", "C#", "C++", "CFML", "Clojure",
-  "COBOL", "CoffeeScript", "Crystal", "CSS", "D", "Dart", "Delphi", "Dylan",
-  "Elixir", "Elm", "Erlang", "F#", "Fortran", "GDScript", "Go", "Groovy",
-  "Hack", "Haskell", "HTML", "Java", "JavaScript", "Julia", "Kotlin",
-  "LabVIEW", "Lean", "Lisp", "Lua", "MATLAB", "Mercury", "Nim", "Nix",
-  "Objective-C", "OCaml", "Pascal", "Perl", "PHP", "PowerShell", "Prolog",
-  "PureScript", "Python", "R", "Racket", "ReasonML", "Ruby", "Rust",
-  "Scala", "Scheme", "Shell", "Smalltalk", "Solidity", "SQL", "Swift",
-  "Tcl", "TypeScript", "V", "Vala", "Verilog", "VHDL", "Visual Basic",
-  "WebAssembly", "Zig",
-].sort();
+const FALLBACK_allLanguages = [
+  "C", "C#", "C++", "Go", "Java", "JavaScript", "Kotlin", "Python",
+  "Ruby", "Rust", "Swift", "TypeScript",
+];
 
 const FALLBACK_LANGUAGES = ["Python", "TypeScript", "JavaScript"];
 
@@ -32,6 +23,7 @@ export default function ModePage() {
   const searchRef = useRef<HTMLInputElement>(null);
   const [userLanguages, setUserLanguages] = useState<string[]>([]);
   const [loadingLangs, setLoadingLangs] = useState(true);
+  const [allLanguages, setAllLanguages] = useState<string[]>(FALLBACK_allLanguages);
 
   const hour = new Date().getHours();
   const greeting =
@@ -45,6 +37,13 @@ export default function ModePage() {
       })
       .catch(() => setUserLanguages(FALLBACK_LANGUAGES))
       .finally(() => setLoadingLangs(false));
+
+    fetch("/api/languages")
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.languages?.length) setAllLanguages(data.languages);
+      })
+      .catch(() => {}); // keep fallback on error
   }, []);
 
   return (
@@ -168,12 +167,12 @@ export default function ModePage() {
                   </div>
                   {/* Results */}
                   <div className="max-h-48 overflow-y-auto">
-                    {ALL_LANGUAGES.filter((l) =>
+                    {allLanguages.filter((l) =>
                       l.toLowerCase().includes(langSearch.toLowerCase())
                     ).length === 0 ? (
                       <p className="px-4 py-3 text-xs font-mono text-text-muted">No results</p>
                     ) : (
-                      ALL_LANGUAGES.filter((l) =>
+                      allLanguages.filter((l) =>
                         l.toLowerCase().includes(langSearch.toLowerCase())
                       ).map((lang) => (
                         <button
