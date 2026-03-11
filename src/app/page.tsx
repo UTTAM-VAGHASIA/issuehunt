@@ -4,11 +4,40 @@ import { Hero } from "@/components/landing/Hero";
 import { GhostCards } from "@/components/landing/GhostCards";
 import { createClient } from "@/lib/supabase/server";
 
+interface GithubIssue {
+  id: number;
+  number: number;
+  title: string;
+  labels: { name: string; color: string }[];
+  created_at: string;
+}
+
+async function fetchGitIssues(): Promise<GithubIssue[]> {
+  try {
+    const res = await fetch(
+      "https://api.github.com/repos/git/git/issues?state=open&per_page=5",
+      {
+        headers: { Accept: "application/vnd.github+json" },
+        next: { revalidate: 3600 }, // cache for 1 hour
+      }
+    );
+    if (!res.ok) return [];
+    return res.json();
+  } catch {
+    return [];
+  }
+}
+
 export default async function LandingPage() {
-  const supabase = await createClient();
+  const [supabase, issues] = await Promise.all([
+    createClient(),
+    fetchGitIssues(),
+  ]);
   const {
     data: { user },
   } = await supabase.auth.getUser();
+
+  const oauthUrl = `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/authorize?provider=github&redirect_to=${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/auth/callback`;
 
   return (
     <div className="relative flex min-h-screen w-full flex-col overflow-x-hidden bg-background">
@@ -30,7 +59,7 @@ export default async function LandingPage() {
           </Link>
         ) : (
           <a
-            href={`${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/authorize?provider=github&redirect_to=${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/auth/callback`}
+            href={oauthUrl}
             className="flex items-center justify-center rounded-lg bg-surface px-4 py-2 text-sm font-semibold text-text-primary transition-colors hover:bg-[#1a1a28]"
           >
             Sign in with GitHub
@@ -40,8 +69,8 @@ export default async function LandingPage() {
 
       {/* Main content */}
       <main className="mx-auto flex w-full max-w-[680px] flex-1 flex-col items-center px-6 pt-16 text-center">
-        <Hero ctaHref={user ? "/mode" : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/authorize?provider=github&redirect_to=${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/auth/callback`} />
-        <GhostCards />
+        <Hero ctaHref={user ? "/mode" : oauthUrl} />
+        <GhostCards issues={issues} />
       </main>
 
       {/* Footer */}
