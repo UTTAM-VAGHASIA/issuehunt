@@ -1,10 +1,11 @@
 import Link from "next/link";
+import { SignInButton } from "@/components/landing/SignInButton";
 
 interface HeroProps {
-  ctaHref?: string;
+  isLoggedIn?: boolean;
 }
 
-export function Hero({ ctaHref = "/mode" }: HeroProps) {
+export function Hero({ isLoggedIn = false }: HeroProps) {
   return (
     <>
       {/* Eyebrow */}
@@ -26,12 +27,18 @@ export function Hero({ ctaHref = "/mode" }: HeroProps) {
 
       {/* CTA */}
       <div className="flex flex-col items-center gap-4 mb-16">
-        <Link
-          href={ctaHref}
-          className="flex items-center justify-center rounded-lg bg-accent px-7 py-3.5 text-sm font-bold text-background transition-transform hover:scale-105"
-        >
-          Start Hunting →
-        </Link>
+        {isLoggedIn ? (
+          <Link
+            href="/mode"
+            className="flex items-center justify-center rounded-lg bg-accent px-7 py-3.5 text-sm font-bold text-background transition-transform hover:scale-105"
+          >
+            Start Hunting →
+          </Link>
+        ) : (
+          <SignInButton className="flex items-center justify-center rounded-lg bg-accent px-7 py-3.5 text-sm font-bold text-background transition-transform hover:scale-105">
+            Start Hunting →
+          </SignInButton>
+        )}
         <p className="text-xs text-text-muted font-medium font-sans">
           Free · No credit card · Login with GitHub
         </p>
