@@ -2,12 +2,12 @@
 
 import { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { Crosshair, Sprout, ChevronDown, Check, Search } from "lucide-react";
+import { Crosshair, Sprout, ChevronDown, Check, Search, X } from "lucide-react";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { useUser } from "@/lib/hooks/useUser";
 import { cn } from "@/lib/utils";
 
-const FALLBACK_allLanguages = [
+const FALLBACK_ALL_LANGUAGES = [
   "C", "C#", "C++", "Go", "Java", "JavaScript", "Kotlin", "Python",
   "Ruby", "Rust", "Swift", "TypeScript",
 ];
@@ -17,13 +17,15 @@ const FALLBACK_LANGUAGES = ["Python", "TypeScript", "JavaScript"];
 export default function ModePage() {
   const router = useRouter();
   const user = useUser();
-  const [exploreLanguage, setExploreLanguage] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  const [exploreLanguages, setExploreLanguages] = useState<string[]>([]);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [langSearch, setLangSearch] = useState("");
-  const searchRef = useRef<HTMLInputElement>(null);
   const [userLanguages, setUserLanguages] = useState<string[]>([]);
   const [loadingLangs, setLoadingLangs] = useState(true);
-  const [allLanguages, setAllLanguages] = useState<string[]>(FALLBACK_allLanguages);
+  const [allLanguages, setAllLanguages] = useState<string[]>(FALLBACK_ALL_LANGUAGES);
 
   const hour = new Date().getHours();
   const greeting =
@@ -43,8 +45,30 @@ export default function ModePage() {
       .then((data) => {
         if (data.languages?.length) setAllLanguages(data.languages);
       })
-      .catch(() => {}); // keep fallback on error
+      .catch(() => {});
   }, []);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setDropdownOpen(false);
+        setLangSearch("");
+      }
+    }
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, []);
+
+  const toggleLanguage = (lang: string) => {
+    setExploreLanguages((prev) =>
+      prev.includes(lang) ? prev.filter((l) => l !== lang) : [...prev, lang]
+    );
+  };
+
+  const filtered = allLanguages.filter((l) =>
+    l.toLowerCase().includes(langSearch.toLowerCase())
+  );
 
   return (
     <div className="bg-background text-text-primary min-h-screen flex flex-col">
@@ -77,7 +101,6 @@ export default function ModePage() {
             )}
             style={{ borderLeft: "3px solid #F97316" }}
           >
-            {/* Icon box */}
             <div
               className="mb-6 w-12 h-12 rounded-xl flex items-center justify-center"
               style={{ background: "rgba(249,115,22,0.1)", color: "#F97316" }}
@@ -92,7 +115,6 @@ export default function ModePage() {
               Find open issues that match your technical expertise and preferred stack.
             </p>
 
-            {/* Language tags */}
             <div className="flex flex-wrap gap-2 mt-auto min-h-[28px]">
               {loadingLangs ? (
                 <span className="text-xs font-mono text-text-muted animate-pulse">
@@ -117,7 +139,6 @@ export default function ModePage() {
               "transition-all duration-300 hover:border-[#2A2A3E]"
             )}
           >
-            {/* Icon box */}
             <div
               className="mb-6 w-12 h-12 rounded-xl flex items-center justify-center"
               style={{ background: "rgba(34,197,94,0.1)", color: "#22C55E" }}
@@ -128,12 +149,32 @@ export default function ModePage() {
             <h3 className="text-xl font-bold mb-3 text-text-primary font-sans">
               Learn Something New
             </h3>
-            <p className="text-text-muted text-sm leading-relaxed mb-6 font-sans">
+            <p className="text-text-muted text-sm leading-relaxed mb-4 font-sans">
               Explore new languages or frameworks by taking on beginner-friendly issues.
             </p>
 
+            {/* Selected language pills */}
+            {exploreLanguages.length > 0 && (
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {exploreLanguages.map((lang) => (
+                  <span
+                    key={lang}
+                    className="flex items-center gap-1 px-2 py-0.5 rounded-md text-xs font-mono bg-[#1E1E2E] text-[#CBD5E1]"
+                  >
+                    {lang}
+                    <button
+                      onClick={(e) => { e.stopPropagation(); toggleLanguage(lang); }}
+                      className="text-text-muted hover:text-danger transition-colors"
+                    >
+                      <X size={10} />
+                    </button>
+                  </span>
+                ))}
+              </div>
+            )}
+
             {/* Language picker */}
-            <div className="relative mt-auto">
+            <div className="relative mt-auto" ref={dropdownRef}>
               <button
                 onClick={() => {
                   setDropdownOpen((o) => !o);
@@ -142,8 +183,10 @@ export default function ModePage() {
                 }}
                 className="flex items-center justify-between w-full px-4 py-2.5 bg-background border border-border rounded-lg transition-colors hover:bg-[#0f0f16] text-left"
               >
-                <span className={cn("text-sm font-sans", exploreLanguage ? "text-text-primary" : "text-text-muted")}>
-                  {exploreLanguage || "Select a language..."}
+                <span className="text-sm font-sans text-text-muted">
+                  {exploreLanguages.length === 0
+                    ? "Select languages..."
+                    : `${exploreLanguages.length} selected`}
                 </span>
                 <ChevronDown
                   size={16}
@@ -153,7 +196,7 @@ export default function ModePage() {
 
               {dropdownOpen && (
                 <div className="absolute top-full left-0 right-0 mt-1 bg-surface border border-border rounded-lg shadow-[0_8px_32px_rgba(0,0,0,0.4)] z-10">
-                  {/* Search input */}
+                  {/* Search */}
                   <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
                     <Search size={13} className="text-text-muted flex-shrink-0" />
                     <input
@@ -164,36 +207,50 @@ export default function ModePage() {
                       placeholder="Search languages..."
                       className="flex-1 bg-transparent text-sm font-sans text-text-primary placeholder:text-text-muted outline-none"
                     />
+                    {langSearch && (
+                      <button onClick={() => setLangSearch("")} className="text-text-muted hover:text-text-primary">
+                        <X size={13} />
+                      </button>
+                    )}
                   </div>
                   {/* Results */}
                   <div className="max-h-48 overflow-y-auto">
-                    {allLanguages.filter((l) =>
-                      l.toLowerCase().includes(langSearch.toLowerCase())
-                    ).length === 0 ? (
+                    {filtered.length === 0 ? (
                       <p className="px-4 py-3 text-xs font-mono text-text-muted">No results</p>
-                    ) : (
-                      allLanguages.filter((l) =>
-                        l.toLowerCase().includes(langSearch.toLowerCase())
-                      ).map((lang) => (
+                    ) : filtered.map((lang) => {
+                      const selected = exploreLanguages.includes(lang);
+                      return (
                         <button
                           key={lang}
-                          onClick={() => {
-                            setExploreLanguage(lang);
-                            setDropdownOpen(false);
-                            setLangSearch("");
-                            router.push(`/hunt?mode=explore&lang=${encodeURIComponent(lang)}`);
-                          }}
-                          className="flex items-center justify-between w-full px-4 py-2 text-sm font-sans text-text-muted hover:bg-[#1a1a28] hover:text-text-primary transition-colors text-left"
+                          onClick={() => toggleLanguage(lang)}
+                          className={cn(
+                            "flex items-center justify-between w-full px-4 py-2 text-sm font-sans transition-colors text-left",
+                            selected
+                              ? "text-accent bg-[rgba(249,115,22,0.05)]"
+                              : "text-text-muted hover:bg-[#1a1a28] hover:text-text-primary"
+                          )}
                         >
                           {lang}
-                          {exploreLanguage === lang && <Check size={14} className="text-accent" />}
+                          {selected && <Check size={14} className="text-accent flex-shrink-0" />}
                         </button>
-                      ))
-                    )}
+                      );
+                    })}
                   </div>
                 </div>
               )}
             </div>
+
+            {/* Start Hunting button — appears when languages are selected */}
+            {exploreLanguages.length > 0 && (
+              <button
+                onClick={() =>
+                  router.push(`/hunt?mode=explore&lang=${encodeURIComponent(exploreLanguages.join(","))}`)
+                }
+                className="mt-4 w-full py-2.5 rounded-lg bg-accent text-background text-sm font-bold font-sans transition-colors hover:bg-accent/90"
+              >
+                Start Hunting →
+              </button>
+            )}
           </div>
         </div>
 
