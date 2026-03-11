@@ -40,7 +40,7 @@ export default async function LandingPage() {
 
       {/* Main content */}
       <main className="mx-auto flex w-full max-w-[680px] flex-1 flex-col items-center px-6 pt-16 text-center">
-        <Hero />
+        <Hero ctaHref={user ? "/mode" : `${process.env.NEXT_PUBLIC_SUPABASE_URL}/auth/v1/authorize?provider=github&redirect_to=${process.env.NEXT_PUBLIC_APP_URL ?? "http://localhost:3000"}/auth/callback`} />
         <GhostCards />
       </main>
 

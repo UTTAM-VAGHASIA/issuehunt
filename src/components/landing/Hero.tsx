@@ -1,6 +1,10 @@
 import Link from "next/link";
 
-export function Hero() {
+interface HeroProps {
+  ctaHref?: string;
+}
+
+export function Hero({ ctaHref = "/mode" }: HeroProps) {
   return (
     <>
       {/* Eyebrow */}
@@ -23,7 +27,7 @@ export function Hero() {
       {/* CTA */}
       <div className="flex flex-col items-center gap-4 mb-16">
         <Link
-          href="/mode"
+          href={ctaHref}
           className="flex items-center justify-center rounded-lg bg-accent px-7 py-3.5 text-sm font-bold text-background transition-transform hover:scale-105"
         >
           Start Hunting →
