@@ -5,11 +5,11 @@ import { getGithubToken } from "@/lib/github-token";
 export async function GET() {
   const supabase = await createClient();
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const token = await getGithubToken(session);
+  const token = await getGithubToken();
   if (!token) return NextResponse.json({ error: "No GitHub token" }, { status: 401 });
 
   // Fetch user's repos (up to 100, most recently pushed)

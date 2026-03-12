@@ -4,14 +4,14 @@ import { createClient } from "@/lib/supabase/server";
 export async function GET() {
   const supabase = await createClient();
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { data, error } = await supabase
     .from("saved_issues")
     .select("*")
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .order("saved_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -21,14 +21,14 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   const supabase = await createClient();
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const issue = await request.json();
 
   const record = {
-    user_id: session.user.id,
+    user_id: user.id,
     github_issue_id: parseInt(issue.id),
     repo_name: issue.repoName,
     issue_number: issue.number,
@@ -43,7 +43,7 @@ export async function POST(request: NextRequest) {
   const [saveResult] = await Promise.all([
     supabase.from("saved_issues").insert(record).select().single(),
     supabase.from("history").insert({
-      user_id: session.user.id,
+      user_id: user.id,
       github_issue_id: parseInt(issue.id),
       repo_name: issue.repoName,
       issue_number: issue.number,

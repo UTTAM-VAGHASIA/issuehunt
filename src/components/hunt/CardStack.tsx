@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { IssueCard } from "./IssueCard";
 import { ActionButtons } from "./ActionButtons";
@@ -10,11 +10,14 @@ interface CardStackProps {
   issues: Issue[];
   onSave: (issue: Issue) => void;
   onSkip: (issue: Issue) => void;
+  onNearingEnd?: () => void;
+  emptySlot?: React.ReactNode;
 }
 
-export function CardStack({ issues, onSave, onSkip }: CardStackProps) {
+export function CardStack({ issues, onSave, onSkip, onNearingEnd, emptySlot }: CardStackProps) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
+  const nearingEndFired = useRef(false);
 
   const x = useMotionValue(0);
   const rotate = useTransform(x, [-300, 0, 300], [-15, 0, 15]);
@@ -39,14 +42,26 @@ export function CardStack({ issues, onSave, onSkip }: CardStackProps) {
           } else {
             onSkip(currentIssue);
           }
-          setCurrentIndex((i) => i + 1);
+          setCurrentIndex((i) => {
+            const next = i + 1;
+            const remaining = issues.length - next;
+            if (remaining <= 3 && !nearingEndFired.current) {
+              nearingEndFired.current = true;
+              onNearingEnd?.();
+            }
+            return next;
+          });
           x.set(0);
           setIsAnimating(false);
         },
       });
     },
-    [currentIssue, isAnimating, x, onSave, onSkip]
+    [currentIssue, isAnimating, x, onSave, onSkip, onNearingEnd, issues.length]
   );
+
+  useEffect(() => {
+    nearingEndFired.current = false;
+  }, [issues.length]);
 
   useEffect(() => {
     const handleKey = (e: KeyboardEvent) => {
@@ -58,6 +73,7 @@ export function CardStack({ issues, onSave, onSkip }: CardStackProps) {
   }, [handleSwipe]);
 
   if (!currentIssue) {
+    if (emptySlot) return <>{emptySlot}</>;
     return (
       <div className="flex flex-col items-center justify-center h-[520px] gap-3">
         <p className="font-mono text-[14px] text-text-muted">You&apos;ve seen all issues!</p>

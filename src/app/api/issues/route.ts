@@ -37,9 +37,9 @@ const GH_HEADERS = (token: string) => ({
 export async function GET(request: NextRequest) {
   const supabase = await createClient();
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    data: { user },
+  } = await supabase.auth.getUser();
+  if (!user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(request.url);
   const mode = searchParams.get("mode") ?? "match";
@@ -49,7 +49,7 @@ export async function GET(request: NextRequest) {
   const { data: settings } = await supabase
     .from("user_settings")
     .select("languages")
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .single();
   const languages: string[] = settings?.languages ?? ["Python", "TypeScript", "JavaScript"];
 
@@ -64,18 +64,18 @@ export async function GET(request: NextRequest) {
     supabase
       .from("saved_issues")
       .select("github_issue_id")
-      .eq("user_id", session.user.id),
+      .eq("user_id", user.id),
     supabase
       .from("history")
       .select("github_issue_id")
-      .eq("user_id", session.user.id),
+      .eq("user_id", user.id),
   ]);
   const seenIds = new Set([
     ...(savedRows ?? []).map((r) => r.github_issue_id),
     ...(historyRows ?? []).map((r) => r.github_issue_id),
   ]);
 
-  const token = await getGithubToken(session);
+  const token = await getGithubToken();
   if (!token) return NextResponse.json({ error: "No GitHub token" }, { status: 401 });
   const searchRes = await fetch(
     `https://api.github.com/search/issues?q=${encodeURIComponent(q)}&per_page=50&page=${page}&sort=updated`,
