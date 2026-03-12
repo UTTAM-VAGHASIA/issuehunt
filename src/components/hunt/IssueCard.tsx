@@ -1,11 +1,12 @@
 "use client";
 
 import Image from "next/image";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Tag } from "@/components/ui/Tag";
 import { MonoText } from "@/components/ui/MonoText";
 import { Issue } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
+import { Users } from "lucide-react";
 
 interface IssueCardProps {
   issue: Issue;
@@ -14,6 +15,14 @@ interface IssueCardProps {
 
 export function IssueCard({ issue, className }: IssueCardProps) {
   const [avatarSrc, setAvatarSrc] = useState(issue.repoAvatar);
+  const [claimCount, setClaimCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/claims/${issue.id}`)
+      .then((r) => r.ok ? r.json() as Promise<{ count: number }> : null)
+      .then((data) => { if (data) setClaimCount(data.count); })
+      .catch(() => {});
+  }, [issue.id]);
 
   return (
     <div
@@ -46,8 +55,24 @@ export function IssueCard({ issue, className }: IssueCardProps) {
         </MonoText>
       </div>
 
+      {claimCount !== null && (
+        <div className="flex items-center gap-1.5 mt-2">
+          <span className={cn(
+            "font-mono text-[10px] px-1.5 py-0.5 rounded-full border flex items-center gap-1",
+            claimCount > 0
+              ? "bg-[rgba(249,115,22,0.15)] text-accent border-accent/30"
+              : "bg-surface text-text-muted border-border"
+          )}>
+            <Users size={9} />
+            {claimCount > 0
+              ? `${claimCount} IssueHunter${claimCount !== 1 ? "s" : ""} working on this`
+              : "No IssueHunters working on this yet"}
+          </span>
+        </div>
+      )}
+
       {/* Divider */}
-      <div className="border-t border-border mb-4" />
+      <div className="border-t border-border mb-4 mt-4" />
 
       {/* Issue title */}
       <h3 className="font-sans font-medium text-[20px] text-text-primary leading-[1.4] line-clamp-2">

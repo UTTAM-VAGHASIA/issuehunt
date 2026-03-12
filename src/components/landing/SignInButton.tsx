@@ -14,6 +14,7 @@ export function SignInButton({ className, children }: SignInButtonProps) {
       provider: "github",
       options: {
         redirectTo: `${window.location.origin}/auth/callback`,
+        scopes: "public_repo",
       },
     });
   };
