@@ -256,3 +256,33 @@ export const MOCK_SAVED_ISSUES: SavedIssue[] = [
     savedAt: "3 days ago",
   },
 ];
+
+export interface HistoryEntry {
+  id: string;
+  issue: Issue;
+  action: "saved" | "skipped";
+  date: string; // ISO date string "YYYY-MM-DD"
+  timeAgo: string; // display string e.g. "2 hours ago"
+}
+
+// Simulated activity spread across recent days
+export const MOCK_HISTORY: HistoryEntry[] = [
+  { id: "h1", issue: MOCK_ISSUES[0], action: "saved",   date: "2026-03-10", timeAgo: "2 hours ago" },
+  { id: "h2", issue: MOCK_ISSUES[1], action: "skipped", date: "2026-03-10", timeAgo: "2 hours ago" },
+  { id: "h3", issue: MOCK_ISSUES[2], action: "saved",   date: "2026-03-10", timeAgo: "3 hours ago" },
+  { id: "h4", issue: MOCK_ISSUES[3], action: "skipped", date: "2026-03-10", timeAgo: "5 hours ago" },
+  { id: "h5", issue: MOCK_ISSUES[4], action: "saved",   date: "2026-03-09", timeAgo: "1 day ago" },
+  { id: "h6", issue: MOCK_ISSUES[5], action: "skipped", date: "2026-03-09", timeAgo: "1 day ago" },
+  { id: "h7", issue: MOCK_ISSUES[6], action: "saved",   date: "2026-03-09", timeAgo: "1 day ago" },
+  { id: "h8", issue: MOCK_ISSUES[7], action: "skipped", date: "2026-03-08", timeAgo: "2 days ago" },
+  { id: "h9", issue: MOCK_ISSUES[8], action: "saved",   date: "2026-03-08", timeAgo: "2 days ago" },
+  { id: "h10", issue: MOCK_ISSUES[9], action: "skipped", date: "2026-03-07", timeAgo: "3 days ago" },
+  // Re-uses issues from earlier days to simulate revisiting the same repo
+  { id: "h11", issue: MOCK_ISSUES[0], action: "saved",  date: "2026-03-06", timeAgo: "4 days ago" },
+  { id: "h12", issue: MOCK_ISSUES[3], action: "saved",  date: "2026-03-05", timeAgo: "5 days ago" },
+];
+
+// Activity by month (keyed "YYYY-MM"), used by StreakCalendar component
+export const MOCK_ACTIVE_DAYS: Record<string, number[]> = {
+  "2026-03": [5, 6, 7, 8, 9, 10],
+};

@@ -86,27 +86,46 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: "GitHub API error" }, { status: 502 });
   }
 
+  interface GHIssue {
+    id: number;
+    number: number;
+    title: string;
+    body: string | null;
+    repository_url: string;
+    created_at: string;
+    comments: number;
+    assignee: unknown;
+    labels: { name: string }[];
+  }
+
+  interface GHRepo {
+    stargazers_count?: number;
+    updated_at?: string;
+    language?: string;
+    owner?: { avatar_url?: string };
+  }
+
   const searchData = await searchRes.json();
-  const unseen = (searchData.items ?? []).filter(
-    (i: any) => !seenIds.has(i.id)
+  const unseen = (searchData.items as GHIssue[] ?? []).filter(
+    (i) => !seenIds.has(i.id)
   );
 
   // Fetch repo details for unique repos (in parallel)
-  const repoUrls = [...new Set(unseen.map((i: any) => i.repository_url))] as string[];
-  const repoMap: Record<string, any> = {};
+  const repoUrls = [...new Set(unseen.map((i) => i.repository_url))] as string[];
+  const repoMap: Record<string, GHRepo> = {};
   await Promise.all(
     repoUrls.slice(0, 20).map(async (url) => {
       const res = await fetch(url, { headers: GH_HEADERS(token) });
-      if (res.ok) repoMap[url] = await res.json();
+      if (res.ok) repoMap[url] = await res.json() as GHRepo;
     })
   );
 
   // Map GitHub items → Issue interface
-  const issues: Issue[] = unseen.slice(0, 20).map((item: any) => {
+  const issues: Issue[] = unseen.slice(0, 20).map((item) => {
     const repo = repoMap[item.repository_url] ?? {};
     const { level, score } = activityLevel(
       repo.stargazers_count ?? 0,
-      repo.updated_at ?? item.updated_at
+      repo.updated_at ?? item.created_at
     );
     const repoName = item.repository_url.replace(
       "https://api.github.com/repos/",
@@ -123,9 +142,9 @@ export async function GET(request: NextRequest) {
         repo.owner?.avatar_url ??
         `https://github.com/${repoName.split("/")[0]}.png`,
       language: repo.language ?? "Unknown",
-      labels: (item.labels ?? [])
-        .map((l: any) => l.name)
-        .filter((l: string) => l !== "good first issue"),
+      labels: item.labels
+        .map((l) => l.name)
+        .filter((l) => l !== "good first issue"),
       openedAgo: timeAgo(item.created_at),
       commentCount: item.comments,
       hasAssignee: item.assignee !== null,
