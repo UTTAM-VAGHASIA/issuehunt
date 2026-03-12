@@ -1,4 +1,5 @@
 import Link from "next/link";
+import Image from "next/image";
 import { Sparkles } from "lucide-react";
 import { Hero } from "@/components/landing/Hero";
 import { GhostCards } from "@/components/landing/GhostCards";
@@ -68,10 +69,12 @@ export default async function LandingPage() {
         {user && (
           <div className="flex items-center gap-3 mb-8 bg-surface border border-border rounded-full px-5 py-2.5">
             {user.user_metadata?.avatar_url && (
-              <img
+              <Image
                 src={user.user_metadata.avatar_url}
                 alt={user.user_metadata.user_name}
-                className="w-7 h-7 rounded-full"
+                width={28}
+                height={28}
+                className="rounded-full"
               />
             )}
             <span className="font-mono text-[13px] text-text-primary">

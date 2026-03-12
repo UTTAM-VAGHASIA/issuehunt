@@ -3,7 +3,6 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
-import { Sparkles } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { MonoText } from "@/components/ui/MonoText";
 import { useUser } from "@/lib/hooks/useUser";

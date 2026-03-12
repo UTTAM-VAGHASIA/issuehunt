@@ -1,3 +1,5 @@
+import Image from "next/image";
+
 interface GithubIssue {
   id: number;
   number: number;
@@ -68,10 +70,12 @@ export function GhostCards({ issues = [] }: GhostCardsProps) {
           <div className="space-y-2 flex-1 min-w-0">
             {/* Repo row */}
             <div className="flex items-center gap-2">
-              <img
+              <Image
                 src="https://github.com/git.png"
                 alt="git"
-                className="w-5 h-5 rounded-full flex-shrink-0"
+                width={20}
+                height={20}
+                className="rounded-full flex-shrink-0"
               />
               <span className="text-xs text-text-muted font-mono">
                 git / git · #{front.number}
