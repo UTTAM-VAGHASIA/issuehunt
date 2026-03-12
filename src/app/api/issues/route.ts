@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getGithubToken } from "@/lib/github-token";
 import { Issue } from "@/lib/mock-data";
 
 function formatStars(n: number): string {
@@ -74,7 +75,8 @@ export async function GET(request: NextRequest) {
     ...(historyRows ?? []).map((r) => r.github_issue_id),
   ]);
 
-  const token = session.provider_token!;
+  const token = await getGithubToken(session);
+  if (!token) return NextResponse.json({ error: "No GitHub token" }, { status: 401 });
   const searchRes = await fetch(
     `https://api.github.com/search/issues?q=${encodeURIComponent(q)}&per_page=50&page=${page}&sort=updated`,
     { headers: GH_HEADERS(token) }

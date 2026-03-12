@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
+import { getGithubToken } from "@/lib/github-token";
 
 export async function GET() {
   const supabase = await createClient();
@@ -8,7 +9,8 @@ export async function GET() {
   } = await supabase.auth.getSession();
   if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-  const token = session.provider_token!;
+  const token = await getGithubToken(session);
+  if (!token) return NextResponse.json({ error: "No GitHub token" }, { status: 401 });
 
   // Fetch user's repos (up to 100, most recently pushed)
   const res = await fetch(

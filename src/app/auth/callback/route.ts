@@ -26,9 +26,24 @@ export async function GET(request: NextRequest) {
       }
     );
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      return NextResponse.redirect(`${origin}${next}`);
+      const response = NextResponse.redirect(`${origin}${next}`);
+
+      // Persist the GitHub provider token in a long-lived cookie.
+      // Supabase drops provider_token after its own token refresh, so we
+      // store it separately and use it as a fallback in API routes.
+      if (data.session?.provider_token) {
+        response.cookies.set("gh_token", data.session.provider_token, {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === "production",
+          sameSite: "lax",
+          path: "/",
+          maxAge: 60 * 60 * 24 * 30, // 30 days — GitHub tokens don't expire
+        });
+      }
+
+      return response;
     }
   }
 
