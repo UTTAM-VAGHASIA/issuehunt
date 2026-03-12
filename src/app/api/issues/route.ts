@@ -48,10 +48,11 @@ export async function GET(request: NextRequest) {
   // Get user's preferred languages
   const { data: settings } = await supabase
     .from("user_settings")
-    .select("languages")
+    .select("languages, cards_per_session")
     .eq("user_id", user.id)
     .single();
   const languages: string[] = settings?.languages ?? ["Python", "TypeScript", "JavaScript"];
+  const cardsPerSession: number = settings?.cards_per_session ?? 20;
 
   // Build search query
   let q = 'is:open is:issue label:"good first issue"';
@@ -121,7 +122,7 @@ export async function GET(request: NextRequest) {
   );
 
   // Map GitHub items → Issue interface
-  const issues: Issue[] = unseen.slice(0, 20).map((item) => {
+  const issues: Issue[] = unseen.slice(0, cardsPerSession).map((item) => {
     const repo = repoMap[item.repository_url] ?? {};
     const { level, score } = activityLevel(
       repo.stargazers_count ?? 0,

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Target } from "lucide-react";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Sidebar } from "@/components/layout/Sidebar";
@@ -8,7 +8,7 @@ import { BottomNav } from "@/components/layout/BottomNav";
 import { StatCard } from "@/components/history/StatCard";
 import { StreakCalendar } from "@/components/history/StreakCalendar";
 import { HistoryRow } from "@/components/history/HistoryRow";
-import { MOCK_HISTORY, MOCK_USER, MOCK_ACTIVE_DAYS } from "@/lib/mock-data";
+import { HistoryEntry } from "@/lib/mock-data";
 import { cn } from "@/lib/utils";
 
 type Filter = "all" | "saved" | "skipped";
@@ -19,9 +19,8 @@ const filterLabels: Record<Filter, string> = {
   skipped: "Skipped",
 };
 
-// Group history entries by display label ("Today", "Yesterday", or date string)
-function groupByDay(entries: typeof MOCK_HISTORY) {
-  const groups: Record<string, typeof MOCK_HISTORY> = {};
+function groupByDay(entries: HistoryEntry[]) {
+  const groups: Record<string, HistoryEntry[]> = {};
   const today = new Date().toISOString().split("T")[0];
   const yesterdayDate = new Date();
   yesterdayDate.setDate(yesterdayDate.getDate() - 1);
@@ -41,21 +40,52 @@ function groupByDay(entries: typeof MOCK_HISTORY) {
   return groups;
 }
 
+function computeStreak(activeDays: Record<string, number[]>): number {
+  let streak = 0;
+  const current = new Date();
+  while (true) {
+    const year = current.getFullYear();
+    const month = String(current.getMonth() + 1).padStart(2, "0");
+    const day = current.getDate();
+    const key = `${year}-${month}`;
+    if (activeDays[key]?.includes(day)) {
+      streak++;
+      current.setDate(current.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
 export default function HistoryPage() {
   const [filter, setFilter] = useState<Filter>("all");
+  const [history, setHistory] = useState<HistoryEntry[]>([]);
+  const [activeDays, setActiveDays] = useState<Record<string, number[]>>({});
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetch("/api/history")
+      .then((r) => r.json())
+      .then((data) => {
+        setHistory(data.history ?? []);
+        setActiveDays(data.activeDays ?? {});
+      })
+      .finally(() => setLoading(false));
+  }, []);
 
   const filtered = useMemo(
-    () => filter === "all" ? MOCK_HISTORY : MOCK_HISTORY.filter((e) => e.action === filter),
-    [filter]
+    () => filter === "all" ? history : history.filter((e) => e.action === filter),
+    [filter, history]
   );
 
   const grouped   = useMemo(() => groupByDay(filtered), [filtered]);
   const groupKeys = useMemo(() => Object.keys(grouped), [grouped]);
 
-  const totalSwiped = MOCK_USER.totalSwiped;
-  const totalSaved  = MOCK_USER.savedCount;
+  const totalSwiped = history.length;
+  const totalSaved  = history.filter((e) => e.action === "saved").length;
   const saveRate    = totalSwiped > 0 ? Math.round((totalSaved / totalSwiped) * 100) : 0;
-  const streak      = MOCK_USER.streak;
+  const streak      = computeStreak(activeDays);
 
   const emptyMessage =
     filter === "all"
@@ -89,19 +119,19 @@ export default function HistoryPage() {
 
               {/* 2×2 stat grid */}
               <div className="grid grid-cols-2 gap-3">
-                <StatCard label="Total Swiped" value={totalSwiped} />
-                <StatCard label="Saved"         value={totalSaved} />
+                <StatCard label="Total Swiped" value={loading ? "—" : totalSwiped} />
+                <StatCard label="Saved"         value={loading ? "—" : totalSaved} />
                 <StatCard
                   label="Streak"
-                  value={`${streak}d`}
+                  value={loading ? "—" : `${streak}d`}
                   subLabel="current streak"
                   accent
                 />
-                <StatCard label="Save Rate" value={`${saveRate}%`} />
+                <StatCard label="Save Rate" value={loading ? "—" : `${saveRate}%`} />
               </div>
 
               {/* Calendar */}
-              <StreakCalendar activityByMonth={MOCK_ACTIVE_DAYS} />
+              <StreakCalendar activityByMonth={activeDays} />
 
             </div>
 
@@ -136,12 +166,16 @@ export default function HistoryPage() {
 
                 {/* Entry count */}
                 <span className="ml-auto font-mono text-[11px] text-text-muted self-center">
-                  {filtered.length} {filtered.length === 1 ? "entry" : "entries"}
+                  {loading ? "…" : `${filtered.length} ${filtered.length === 1 ? "entry" : "entries"}`}
                 </span>
               </div>
 
               {/* Activity timeline */}
-              {groupKeys.length === 0 ? (
+              {loading ? (
+                <div className="flex flex-col items-center py-16 gap-3">
+                  <p className="font-mono text-[12px] text-text-muted">Loading…</p>
+                </div>
+              ) : groupKeys.length === 0 ? (
                 <div className="flex flex-col items-center py-16 gap-3">
                   <Target size={28} className="text-text-muted" />
                   <p className="font-mono text-[12px] text-text-muted">

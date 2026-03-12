@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { Unlink } from "lucide-react";
+import { createClient } from "@/lib/supabase/client";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
@@ -11,14 +13,61 @@ import { MiniModeSelector } from "@/components/settings/MiniModeSelector";
 import { LanguageMultiSelect } from "@/components/settings/LanguageMultiSelect";
 import { SessionStepper } from "@/components/settings/SessionStepper";
 import { DisplayToggleRow } from "@/components/settings/DisplayToggleRow";
-import { MOCK_USER } from "@/lib/mock-data";
+
+interface Profile {
+  name: string;
+  username: string;
+  avatar_url: string;
+}
 
 export default function SettingsPage() {
+  const [profile, setProfile] = useState<Profile | null>(null);
   const [defaultMode, setDefaultMode] = useState<"match" | "explore">("match");
-  const [languages, setLanguages] = useState<string[]>(MOCK_USER.languages);
+  const [languages, setLanguages] = useState<string[]>(["Python", "TypeScript", "JavaScript"]);
   const [cardsPerSession, setCardsPerSession] = useState(20);
   const [showActivityScore, setShowActivityScore] = useState(true);
   const [showResponseTime, setShowResponseTime] = useState(true);
+  const loaded = useRef(false);
+  const router = useRouter();
+
+  const handleDisconnect = async () => {
+    const supabase = createClient();
+    await supabase.auth.signOut();
+    router.push("/");
+  };
+
+  useEffect(() => {
+    fetch("/api/settings")
+      .then((r) => r.json())
+      .then((data) => {
+        setProfile(data.profile);
+        setDefaultMode(data.settings.default_mode);
+        setLanguages(data.settings.languages);
+        setCardsPerSession(data.settings.cards_per_session);
+        setShowActivityScore(data.settings.show_activity_score);
+        setShowResponseTime(data.settings.show_response_time);
+        loaded.current = true;
+      });
+  }, []);
+
+  // Debounced save — fires 500ms after any preference change, skips initial load
+  useEffect(() => {
+    if (!loaded.current) return;
+    const timer = setTimeout(() => {
+      fetch("/api/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          default_mode: defaultMode,
+          languages,
+          cards_per_session: cardsPerSession,
+          show_activity_score: showActivityScore,
+          show_response_time: showResponseTime,
+        }),
+      });
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [defaultMode, languages, cardsPerSession, showActivityScore, showResponseTime]);
 
   return (
     <div className="flex flex-col h-screen bg-background overflow-hidden">
@@ -54,13 +103,23 @@ export default function SettingsPage() {
                     className="rounded-full flex-shrink-0"
                     style={{ border: "2px solid rgba(249,115,22,0.4)" }}
                   >
-                    <Avatar src={MOCK_USER.avatar} alt={MOCK_USER.name} size={48} />
+                    {profile?.avatar_url ? (
+                      <Avatar
+                        src={profile.avatar_url}
+                        alt={profile.name}
+                        size={48}
+                      />
+                    ) : (
+                      <div style={{ width: 48, height: 48 }} className="rounded-full bg-surface" />
+                    )}
                   </div>
                   <div className="flex flex-col gap-1">
                     <span className="font-sans font-semibold text-[16px] text-text-primary">
-                      {MOCK_USER.name}
+                      {profile?.name ?? "—"}
                     </span>
-                    <MonoText size="sm" muted>@{MOCK_USER.username}</MonoText>
+                    <MonoText size="sm" muted>
+                      {profile?.username ? `@${profile.username}` : "—"}
+                    </MonoText>
                   </div>
                   <div className="ml-auto">
                     <span className="font-mono text-[11px] bg-success/10 text-success border border-success/20 px-3 py-1 rounded-full">
@@ -154,6 +213,7 @@ export default function SettingsPage() {
                   <button
                     type="button"
                     aria-label="Disconnect GitHub account"
+                    onClick={handleDisconnect}
                     className="flex-shrink-0 flex items-center gap-2 font-sans text-[13px] px-4 py-2 rounded-btn border border-danger/30 text-danger transition-colors hover:bg-danger/10"
                   >
                     <Unlink size={14} />

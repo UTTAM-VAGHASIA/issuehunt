@@ -14,7 +14,7 @@ export async function GET() {
 
   // Fetch user's repos (up to 100, most recently pushed)
   const res = await fetch(
-    "https://api.github.com/user/repos?per_page=100&sort=pushed&affiliation=owner",
+    "https://api.github.com/user/repos?per_page=100&sort=pushed&affiliation=owner,collaborator",
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -38,10 +38,10 @@ export async function GET() {
     }
   }
 
-  // Sort by frequency, return top 6
+  // Sort by frequency, return top 8
   const languages = Object.entries(counts)
     .sort((a, b) => b[1] - a[1])
-    .slice(0, 6)
+    .slice(0, 8)
     .map(([lang]) => lang);
 
   return NextResponse.json({ languages });
