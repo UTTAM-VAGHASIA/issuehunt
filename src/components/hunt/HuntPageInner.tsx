@@ -1,31 +1,96 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
 import { CardStack } from "@/components/hunt/CardStack";
 import { HuntStats } from "@/components/hunt/HuntStats";
-import { FilterToggles } from "@/components/hunt/FilterToggles";
+import { FilterToggles, HuntFilters } from "@/components/hunt/FilterToggles";
 import { StreakBadge } from "@/components/ui/StreakBadge";
 import { MonoText } from "@/components/ui/MonoText";
-import { useUser } from "@/lib/hooks/useUser";
 import { useHuntIssues } from "@/lib/hooks/useHuntIssues";
 import { Issue } from "@/lib/mock-data";
 
-const streakDays = [true, true, true, true, false, false, false];
 const dayLabels = ["M", "T", "W", "T", "F", "S", "S"];
+
+function computeStreak(activeDays: Record<string, number[]>): number {
+  let streak = 0;
+  const cursor = new Date();
+  cursor.setHours(0, 0, 0, 0);
+  while (true) {
+    const year = cursor.getFullYear();
+    const month = String(cursor.getMonth() + 1).padStart(2, "0");
+    const day = cursor.getDate();
+    const key = `${year}-${month}`;
+    if (activeDays[key]?.includes(day)) {
+      streak++;
+      cursor.setDate(cursor.getDate() - 1);
+    } else {
+      break;
+    }
+  }
+  return streak;
+}
+
+function computeWeekDots(activeDays: Record<string, number[]>): boolean[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  // Find the most recent Monday
+  const dayOfWeek = today.getDay(); // 0=Sun
+  const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
+  const monday = new Date(today);
+  monday.setDate(today.getDate() + mondayOffset);
+
+  return Array.from({ length: 7 }, (_, i) => {
+    const d = new Date(monday);
+    d.setDate(monday.getDate() + i);
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const day = d.getDate();
+    const key = `${year}-${month}`;
+    return activeDays[key]?.includes(day) ?? false;
+  });
+}
 
 export function HuntPageInner() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const mode = searchParams.get("mode") ?? "match";
-  const user = useUser();
+  const [filters, setFilters] = useState<HuntFilters>({
+    goodFirstIssue: true,
+    hasContributing: true,
+    activeRecently: true,
+  });
 
-  const { issues, total, loading, error, prefetchNextPage } = useHuntIssues(mode);
+  const handleToggle = (id: keyof HuntFilters) => {
+    setFilters((prev) => ({ ...prev, [id]: !prev[id] }));
+  };
+
+  const { issues, total, loading, error, prefetchNextPage } = useHuntIssues(mode, filters);
   const [saved, setSaved] = useState(0);
   const [skipped, setSkipped] = useState(0);
+  const [streak, setStreak] = useState(0);
+  const [weekDots, setWeekDots] = useState<boolean[]>([false, false, false, false, false, false, false]);
+
+  useEffect(() => {
+    fetch("/api/history")
+      .then((res) => res.json())
+      .then((data: { history?: { action: string; date: string }[]; activeDays?: Record<string, number[]> }) => {
+        if (data.history) {
+          const today = new Date().toISOString().split("T")[0];
+          const todayEntries = data.history.filter((e) => e.date === today);
+          setSaved(todayEntries.filter((e) => e.action === "saved").length);
+          setSkipped(todayEntries.filter((e) => e.action === "skipped").length);
+        }
+        if (data.activeDays) {
+          setStreak(computeStreak(data.activeDays));
+          setWeekDots(computeWeekDots(data.activeDays));
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSave = async (issue: Issue) => {
     setSaved((n) => n + 1);
@@ -107,15 +172,15 @@ export function HuntPageInner() {
 
             <div className="border-t border-border my-5" />
 
-            <FilterToggles />
+            <FilterToggles filters={filters} onToggle={handleToggle} />
 
             <div className="border-t border-border my-5" />
 
             <div>
-              <StreakBadge streak={user ? 0 : 0} className="mb-4" />
+              <StreakBadge streak={streak} className="mb-4" />
               <div className="flex flex-col gap-2">
                 <div className="flex gap-1">
-                  {streakDays.map((active, i) => (
+                  {weekDots.map((active, i) => (
                     <div
                       key={i}
                       className="w-2 h-2 rounded-full"

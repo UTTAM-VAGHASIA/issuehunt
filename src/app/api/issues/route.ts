@@ -44,6 +44,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url);
   const mode = searchParams.get("mode") ?? "match";
   const page = parseInt(searchParams.get("page") ?? "1");
+  const goodFirstIssue = searchParams.get("goodFirstIssue") !== "false";
 
   // Get user's preferred languages
   const { data: settings } = await supabase
@@ -55,7 +56,9 @@ export async function GET(request: NextRequest) {
   const cardsPerSession: number = settings?.cards_per_session ?? 20;
 
   // Build search query
-  let q = 'is:open is:issue label:"good first issue"';
+  let q = goodFirstIssue
+    ? 'is:open is:issue label:"good first issue"'
+    : "is:open is:issue";
   if (mode === "match") {
     q += " " + languages.map((l) => `language:${l}`).join(" ");
   }

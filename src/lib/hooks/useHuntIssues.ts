@@ -2,6 +2,7 @@
 
 import { useReducer, useEffect, useCallback, useRef } from "react";
 import { Issue } from "@/lib/mock-data";
+import { HuntFilters } from "@/components/hunt/FilterToggles";
 
 interface FetchState {
   issues: Issue[];
@@ -37,7 +38,15 @@ interface UseHuntIssuesResult {
   prefetchNextPage: () => void;
 }
 
-export function useHuntIssues(mode: string): UseHuntIssuesResult {
+function applyClientFilters(issues: Issue[], filters: HuntFilters): Issue[] {
+  return issues.filter((issue) => {
+    if (filters.hasContributing && !issue.hasContributing) return false;
+    if (filters.activeRecently && issue.activityScore <= 45) return false;
+    return true;
+  });
+}
+
+export function useHuntIssues(mode: string, filters: HuntFilters): UseHuntIssuesResult {
   const [state, dispatch] = useReducer(fetchReducer, {
     issues: [],
     total: 0,
@@ -53,14 +62,16 @@ export function useHuntIssues(mode: string): UseHuntIssuesResult {
     dispatch({ type: "START" });
     nextPage.current = 2;
 
-    fetch(`/api/issues?mode=${mode}&page=1`)
+    const params = new URLSearchParams({ mode, page: "1", goodFirstIssue: String(filters.goodFirstIssue) });
+    fetch(`/api/issues?${params}`)
       .then((r) => r.json())
       .then((data) => {
         if (cancelled) return;
         if (data.error) {
           dispatch({ type: "ERROR", error: data.error });
         } else {
-          dispatch({ type: "SUCCESS", issues: data.issues ?? [], total: data.total ?? 0 });
+          const filtered = applyClientFilters(data.issues ?? [], filters);
+          dispatch({ type: "SUCCESS", issues: filtered, total: data.total ?? 0 });
         }
       })
       .catch(() => {
@@ -68,24 +79,26 @@ export function useHuntIssues(mode: string): UseHuntIssuesResult {
       });
 
     return () => { cancelled = true; };
-  }, [mode]);
+  }, [mode, filters]);
 
   const prefetchNextPage = useCallback(() => {
     if (isFetching.current) return;
     isFetching.current = true;
     const page = nextPage.current;
 
-    fetch(`/api/issues?mode=${mode}&page=${page}`)
+    const params = new URLSearchParams({ mode, page: String(page), goodFirstIssue: String(filters.goodFirstIssue) });
+    fetch(`/api/issues?${params}`)
       .then((r) => r.json())
       .then((data) => {
         if (data.issues?.length) {
-          dispatch({ type: "APPEND", issues: data.issues });
+          const filtered = applyClientFilters(data.issues, filters);
+          dispatch({ type: "APPEND", issues: filtered });
           nextPage.current = page + 1;
         }
       })
       .catch(() => {})
       .finally(() => { isFetching.current = false; });
-  }, [mode]);
+  }, [mode, filters]);
 
   return { ...state, prefetchNextPage };
 }
