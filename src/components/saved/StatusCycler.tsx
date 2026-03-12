@@ -1,11 +1,9 @@
 "use client";
 
-import { SavedIssue } from "@/lib/mock-data";
+import { IssueStatus } from "@/lib/types/saved";
 import { cn } from "@/lib/utils";
 
-type Status = SavedIssue["status"];
-
-const statusConfig: Record<Status, { label: string; className: string }> = {
+const statusConfig: Record<IssueStatus, { label: string; className: string }> = {
   todo: {
     label: "To Do",
     className: "border-border text-text-muted",
@@ -20,15 +18,15 @@ const statusConfig: Record<Status, { label: string; className: string }> = {
   },
 };
 
-const cycle: Record<Status, Status> = {
+const cycle: Record<IssueStatus, IssueStatus> = {
   todo: "in-progress",
   "in-progress": "done",
   done: "todo",
 };
 
 interface StatusCyclerProps {
-  status: Status;
-  onChange: (next: Status) => void;
+  status: IssueStatus;
+  onChange: (next: IssueStatus) => void;
 }
 
 export function StatusCycler({ status, onChange }: StatusCyclerProps) {
