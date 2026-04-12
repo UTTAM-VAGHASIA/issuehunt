@@ -111,7 +111,7 @@ export const CardStack = forwardRef<CardStackHandle, CardStackProps>(function Ca
               transformOrigin: "bottom center",
             }}
           >
-            <IssueCard issue={nextNextIssue} />
+            <IssueCard key={nextNextIssue.id} issue={nextNextIssue} />
           </div>
         )}
 
@@ -125,15 +125,16 @@ export const CardStack = forwardRef<CardStackHandle, CardStackProps>(function Ca
               transformOrigin: "bottom center",
             }}
           >
-            <IssueCard issue={nextIssue} />
+            <IssueCard key={nextIssue.id} issue={nextIssue} />
           </div>
         )}
 
         {/* Active draggable card */}
         <motion.div
-          className="absolute inset-x-0 top-0 cursor-grab active:cursor-grabbing"
+          className="absolute inset-x-0 top-0 select-none cursor-grab active:cursor-grabbing"
           style={{ x, rotate }}
-          drag="x"
+          draggable={false}
+          drag={isAnimating ? false : "x"}
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.7}
           onDragEnd={(_, info) => {
@@ -173,7 +174,7 @@ export const CardStack = forwardRef<CardStackHandle, CardStackProps>(function Ca
             </span>
           </motion.div>
 
-          <IssueCard issue={currentIssue} showClaims />
+          <IssueCard key={currentIssue.id} issue={currentIssue} showClaims />
         </motion.div>
       </div>
 

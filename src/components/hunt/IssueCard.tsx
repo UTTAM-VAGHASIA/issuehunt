@@ -34,7 +34,7 @@ export function IssueCard({ issue, className, showClaims = false }: IssueCardPro
   return (
     <div
       className={cn(
-        "w-full bg-surface border border-border rounded-card shadow-[0_8px_32px_rgba(0,0,0,0.4)]",
+        "w-full bg-surface border border-border rounded-card shadow-[0_8px_32px_rgba(0,0,0,0.4)] select-none",
         className
       )}
       style={{ padding: "32px" }}
@@ -49,6 +49,7 @@ export function IssueCard({ issue, className, showClaims = false }: IssueCardPro
               width={24}
               height={24}
               className="rounded-full object-cover"
+              draggable={false}
               onError={() => setAvatarSrc("https://github.com/ghost.png")}
             />
           </div>
