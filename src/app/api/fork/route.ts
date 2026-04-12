@@ -29,6 +29,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
   }
 
+  // Validate repoName format: "owner/repo"
+  if (!/^[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+$/.test(repoName)) {
+    return NextResponse.json({ error: "Invalid repo name format" }, { status: 400 });
+  }
+
   // Fork the repo via GitHub API
   const forkRes = await fetch(`https://api.github.com/repos/${repoName}/forks`, {
     method: "POST",

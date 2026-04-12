@@ -75,9 +75,24 @@ export async function POST(request: NextRequest) {
 
   const issue = await request.json();
 
+  if (
+    !issue.id ||
+    !issue.repoName ||
+    !issue.number ||
+    !issue.title ||
+    !issue.language
+  ) {
+    return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
+  }
+
+  const parsedId = parseInt(issue.id);
+  if (isNaN(parsedId)) {
+    return NextResponse.json({ error: "Invalid issue id" }, { status: 400 });
+  }
+
   const { error } = await supabase.from("history").insert({
     user_id: user.id,
-    github_issue_id: parseInt(issue.id),
+    github_issue_id: parsedId,
     repo_name: issue.repoName,
     issue_number: issue.number,
     title: issue.title,

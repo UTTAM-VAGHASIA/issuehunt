@@ -1,10 +1,14 @@
 "use client";
 
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback, useRef, forwardRef, useImperativeHandle } from "react";
 import { motion, useMotionValue, useTransform, animate } from "framer-motion";
 import { IssueCard } from "./IssueCard";
 import { ActionButtons } from "./ActionButtons";
 import { Issue } from "@/lib/mock-data";
+
+export interface CardStackHandle {
+  pushBack: () => void;
+}
 
 interface CardStackProps {
   issues: Issue[];
@@ -14,7 +18,10 @@ interface CardStackProps {
   emptySlot?: React.ReactNode;
 }
 
-export function CardStack({ issues, onSave, onSkip, onNearingEnd, emptySlot }: CardStackProps) {
+export const CardStack = forwardRef<CardStackHandle, CardStackProps>(function CardStack(
+  { issues, onSave, onSkip, onNearingEnd, emptySlot },
+  ref
+) {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isAnimating, setIsAnimating] = useState(false);
   const nearingEndFired = useRef(false);
@@ -23,6 +30,14 @@ export function CardStack({ issues, onSave, onSkip, onNearingEnd, emptySlot }: C
   const rotate = useTransform(x, [-300, 0, 300], [-15, 0, 15]);
   const skipOpacity = useTransform(x, [-150, -30, 0], [1, 1, 0]);
   const saveOpacity = useTransform(x, [0, 30, 150], [0, 1, 1]);
+
+  // Expose pushBack so HuntPageInner can return a failed card to the top of the deck.
+  useImperativeHandle(ref, () => ({
+    pushBack: () => {
+      setCurrentIndex((i) => Math.max(0, i - 1));
+      x.set(0);
+    },
+  }));
 
   const currentIssue = issues[currentIndex];
   const nextIssue = issues[currentIndex + 1];
@@ -122,6 +137,7 @@ export function CardStack({ issues, onSave, onSkip, onNearingEnd, emptySlot }: C
           dragConstraints={{ left: 0, right: 0 }}
           dragElastic={0.7}
           onDragEnd={(_, info) => {
+            if (isAnimating) return;
             if (info.offset.x > 100) {
               handleSwipe("right");
             } else if (info.offset.x < -100) {
@@ -157,7 +173,7 @@ export function CardStack({ issues, onSave, onSkip, onNearingEnd, emptySlot }: C
             </span>
           </motion.div>
 
-          <IssueCard issue={currentIssue} />
+          <IssueCard issue={currentIssue} showClaims />
         </motion.div>
       </div>
 
@@ -168,4 +184,4 @@ export function CardStack({ issues, onSave, onSkip, onNearingEnd, emptySlot }: C
       />
     </div>
   );
-}
+});

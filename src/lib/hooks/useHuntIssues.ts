@@ -1,11 +1,11 @@
 "use client";
 
-import { useReducer, useEffect, useCallback, useRef } from "react";
+import { useReducer, useEffect, useCallback, useRef, useMemo } from "react";
 import { Issue } from "@/lib/mock-data";
 import { HuntFilters } from "@/components/hunt/FilterToggles";
 
 interface FetchState {
-  issues: Issue[];
+  rawIssues: Issue[];
   total: number;
   loading: boolean;
   error: string | null;
@@ -20,13 +20,13 @@ type Action =
 function fetchReducer(state: FetchState, action: Action): FetchState {
   switch (action.type) {
     case "START":
-      return { issues: [], total: 0, loading: true, error: null };
+      return { rawIssues: [], total: 0, loading: true, error: null };
     case "SUCCESS":
-      return { ...state, issues: action.issues, total: action.total, loading: false };
+      return { ...state, rawIssues: action.issues, total: action.total, loading: false };
     case "ERROR":
       return { ...state, loading: false, error: action.error };
     case "APPEND":
-      return { ...state, issues: [...state.issues, ...action.issues] };
+      return { ...state, rawIssues: [...state.rawIssues, ...action.issues] };
   }
 }
 
@@ -46,9 +46,9 @@ function applyClientFilters(issues: Issue[], filters: HuntFilters): Issue[] {
   });
 }
 
-export function useHuntIssues(mode: string, filters: HuntFilters): UseHuntIssuesResult {
+export function useHuntIssues(mode: string, filters: HuntFilters, retryKey = 0): UseHuntIssuesResult {
   const [state, dispatch] = useReducer(fetchReducer, {
-    issues: [],
+    rawIssues: [],
     total: 0,
     loading: true,
     error: null,
@@ -57,12 +57,20 @@ export function useHuntIssues(mode: string, filters: HuntFilters): UseHuntIssues
   const nextPage = useRef(2);
   const isFetching = useRef(false);
 
+  // Only re-fetch from GitHub when server-side params change.
+  // retryKey increments when the user clicks "Retry" on the error state.
+  // Client filters (hasContributing, activeRecently) are applied via useMemo below.
   useEffect(() => {
     let cancelled = false;
     dispatch({ type: "START" });
     nextPage.current = 2;
+    isFetching.current = false; // reset so prefetch works after mode/filter change
 
-    const params = new URLSearchParams({ mode, page: "1", goodFirstIssue: String(filters.goodFirstIssue) });
+    const params = new URLSearchParams({
+      mode,
+      page: "1",
+      goodFirstIssue: String(filters.goodFirstIssue),
+    });
     fetch(`/api/issues?${params}`)
       .then((r) => r.json())
       .then((data) => {
@@ -70,8 +78,7 @@ export function useHuntIssues(mode: string, filters: HuntFilters): UseHuntIssues
         if (data.error) {
           dispatch({ type: "ERROR", error: data.error });
         } else {
-          const filtered = applyClientFilters(data.issues ?? [], filters);
-          dispatch({ type: "SUCCESS", issues: filtered, total: data.total ?? 0 });
+          dispatch({ type: "SUCCESS", issues: data.issues ?? [], total: data.total ?? 0 });
         }
       })
       .catch(() => {
@@ -79,26 +86,35 @@ export function useHuntIssues(mode: string, filters: HuntFilters): UseHuntIssues
       });
 
     return () => { cancelled = true; };
-  }, [mode, filters]);
+  }, [mode, filters.goodFirstIssue, retryKey]);
+
+  // Apply client-side filters reactively — no API call, instant re-filter.
+  const issues = useMemo(
+    () => applyClientFilters(state.rawIssues, filters),
+    [state.rawIssues, filters]
+  );
 
   const prefetchNextPage = useCallback(() => {
     if (isFetching.current) return;
     isFetching.current = true;
     const page = nextPage.current;
 
-    const params = new URLSearchParams({ mode, page: String(page), goodFirstIssue: String(filters.goodFirstIssue) });
+    const params = new URLSearchParams({
+      mode,
+      page: String(page),
+      goodFirstIssue: String(filters.goodFirstIssue),
+    });
     fetch(`/api/issues?${params}`)
       .then((r) => r.json())
       .then((data) => {
         if (data.issues?.length) {
-          const filtered = applyClientFilters(data.issues, filters);
-          dispatch({ type: "APPEND", issues: filtered });
+          dispatch({ type: "APPEND", issues: data.issues });
           nextPage.current = page + 1;
         }
       })
       .catch(() => {})
       .finally(() => { isFetching.current = false; });
-  }, [mode, filters]);
+  }, [mode, filters.goodFirstIssue]);
 
-  return { ...state, prefetchNextPage };
+  return { issues, total: state.total, loading: state.loading, error: state.error, prefetchNextPage };
 }

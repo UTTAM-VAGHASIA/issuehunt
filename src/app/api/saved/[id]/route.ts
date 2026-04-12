@@ -35,6 +35,14 @@ export async function PATCH(
   const { id } = await params;
   const { status } = await request.json();
 
+  const validStatuses = ["todo", "in-progress", "done"];
+  if (!status || !validStatuses.includes(status)) {
+    return NextResponse.json(
+      { error: `Invalid status. Must be one of: ${validStatuses.join(", ")}` },
+      { status: 400 }
+    );
+  }
+
   const { error } = await supabase
     .from("saved_issues")
     .update({ status })

@@ -11,18 +11,25 @@ import { Users } from "lucide-react";
 interface IssueCardProps {
   issue: Issue;
   className?: string;
+  /** Only the active (swipeable) card should fetch claims. Ghost cards pass nothing. */
+  showClaims?: boolean;
 }
 
-export function IssueCard({ issue, className }: IssueCardProps) {
+export function IssueCard({ issue, className, showClaims = false }: IssueCardProps) {
   const [avatarSrc, setAvatarSrc] = useState(issue.repoAvatar);
   const [claimCount, setClaimCount] = useState<number | null>(null);
 
   useEffect(() => {
+    if (!showClaims) return;
     fetch(`/api/claims/${issue.id}`)
       .then((r) => r.ok ? r.json() as Promise<{ count: number }> : null)
       .then((data) => { if (data) setClaimCount(data.count); })
       .catch(() => {});
-  }, [issue.id]);
+  }, [issue.id, showClaims]);
+
+  const [repoOwner, repoRepo] = issue.repoName?.includes("/")
+    ? issue.repoName.split("/")
+    : [issue.repoName, ""];
 
   return (
     <div
@@ -46,8 +53,8 @@ export function IssueCard({ issue, className }: IssueCardProps) {
             />
           </div>
           <MonoText size="sm" muted>
-            {issue.repoName.split("/")[0]}{" "}
-            <span className="text-text-primary">/ {issue.repoName.split("/")[1]}</span>
+            {repoOwner}{" "}
+            {repoRepo && <span className="text-text-primary">/ {repoRepo}</span>}
           </MonoText>
         </div>
         <MonoText size="xs" muted>
@@ -55,7 +62,7 @@ export function IssueCard({ issue, className }: IssueCardProps) {
         </MonoText>
       </div>
 
-      {claimCount !== null && (
+      {showClaims && claimCount !== null && (
         <div className="flex items-center gap-1.5 mt-2">
           <span className={cn(
             "font-mono text-[10px] px-1.5 py-0.5 rounded-full border flex items-center gap-1",

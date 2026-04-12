@@ -91,6 +91,27 @@ export async function PUT(request: NextRequest) {
     if (key in body) patch[key] = body[key];
   }
 
+  // Type validation
+  if ("default_mode" in patch && !["match", "explore"].includes(patch.default_mode as string)) {
+    return NextResponse.json({ error: "default_mode must be 'match' or 'explore'" }, { status: 400 });
+  }
+  if ("languages" in patch && !Array.isArray(patch.languages)) {
+    return NextResponse.json({ error: "languages must be an array" }, { status: 400 });
+  }
+  if ("cards_per_session" in patch && (typeof patch.cards_per_session !== "number" || patch.cards_per_session < 1 || patch.cards_per_session > 100)) {
+    return NextResponse.json({ error: "cards_per_session must be a number between 1 and 100" }, { status: 400 });
+  }
+  if ("show_activity_score" in patch && typeof patch.show_activity_score !== "boolean") {
+    return NextResponse.json({ error: "show_activity_score must be a boolean" }, { status: 400 });
+  }
+  if ("show_response_time" in patch && typeof patch.show_response_time !== "boolean") {
+    return NextResponse.json({ error: "show_response_time must be a boolean" }, { status: 400 });
+  }
+
+  if (Object.keys(patch).length === 0) {
+    return NextResponse.json({ error: "No valid fields to update" }, { status: 400 });
+  }
+
   const { error } = await supabase
     .from("user_settings")
     .upsert({ user_id: user.id, ...patch }, { onConflict: "user_id" });

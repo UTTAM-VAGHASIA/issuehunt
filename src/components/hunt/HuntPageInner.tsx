@@ -1,11 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AppHeader } from "@/components/layout/AppHeader";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { BottomNav } from "@/components/layout/BottomNav";
-import { CardStack } from "@/components/hunt/CardStack";
+import { CardStack, CardStackHandle } from "@/components/hunt/CardStack";
 import { HuntStats } from "@/components/hunt/HuntStats";
 import { FilterToggles, HuntFilters } from "@/components/hunt/FilterToggles";
 import { StreakBadge } from "@/components/ui/StreakBadge";
@@ -37,7 +37,6 @@ function computeStreak(activeDays: Record<string, number[]>): number {
 function computeWeekDots(activeDays: Record<string, number[]>): boolean[] {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
-  // Find the most recent Monday
   const dayOfWeek = today.getDay(); // 0=Sun
   const mondayOffset = dayOfWeek === 0 ? -6 : 1 - dayOfWeek;
   const monday = new Date(today);
@@ -63,16 +62,31 @@ export function HuntPageInner() {
     hasContributing: true,
     activeRecently: true,
   });
+  const [retryKey, setRetryKey] = useState(0);
 
   const handleToggle = (id: keyof HuntFilters) => {
     setFilters((prev) => ({ ...prev, [id]: !prev[id] }));
   };
 
-  const { issues, total, loading, error, prefetchNextPage } = useHuntIssues(mode, filters);
-  const [saved, setSaved] = useState(0);
-  const [skipped, setSkipped] = useState(0);
-  const [streak, setStreak] = useState(0);
-  const [weekDots, setWeekDots] = useState<boolean[]>([false, false, false, false, false, false, false]);
+  const { issues, total, loading, error, prefetchNextPage } = useHuntIssues(mode, filters, retryKey);
+
+  // Counter state: null until the /api/history fetch resolves to avoid the 0-flash.
+  // Session refs track swipes made before or during the initial fetch, preventing
+  // the DB response from overwriting optimistic increments.
+  const sessionSavedRef = useRef(0);
+  const sessionSkippedRef = useRef(0);
+  const [savedToday, setSavedToday] = useState<number | null>(null);
+  const [skippedToday, setSkippedToday] = useState<number | null>(null);
+
+  // Streak and week dots: null until loaded so the StreakBadge never flashes "0".
+  const [streak, setStreak] = useState<number | null>(null);
+  const [weekDots, setWeekDots] = useState<boolean[] | null>(null);
+
+  // Ref to CardStack so we can push a card back on API failure.
+  const cardStackRef = useRef<CardStackHandle>(null);
+
+  // Brief swipe error shown when a save/skip API call fails.
+  const [swipeError, setSwipeError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch("/api/history")
@@ -81,8 +95,11 @@ export function HuntPageInner() {
         if (data.history) {
           const today = new Date().toISOString().split("T")[0];
           const todayEntries = data.history.filter((e) => e.date === today);
-          setSaved(todayEntries.filter((e) => e.action === "saved").length);
-          setSkipped(todayEntries.filter((e) => e.action === "skipped").length);
+          const dbSaved = todayEntries.filter((e) => e.action === "saved").length;
+          const dbSkipped = todayEntries.filter((e) => e.action === "skipped").length;
+          // Add session swipes that happened while the fetch was in-flight.
+          setSavedToday(dbSaved + sessionSavedRef.current);
+          setSkippedToday(dbSkipped + sessionSkippedRef.current);
         }
         if (data.activeDays) {
           setStreak(computeStreak(data.activeDays));
@@ -93,22 +110,47 @@ export function HuntPageInner() {
   }, []);
 
   const handleSave = async (issue: Issue) => {
-    setSaved((n) => n + 1);
-    await fetch("/api/saved", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(issue),
-    });
+    sessionSavedRef.current += 1;
+    setSavedToday((prev) => (prev ?? 0) + 1);
+    try {
+      const res = await fetch("/api/saved", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(issue),
+      });
+      if (!res.ok) throw new Error("save failed");
+    } catch {
+      // Revert counter and return the card to the top of the deck.
+      sessionSavedRef.current -= 1;
+      setSavedToday((prev) => Math.max(0, (prev ?? 1) - 1));
+      cardStackRef.current?.pushBack();
+      setSwipeError("Couldn't save — issue returned to your queue");
+      setTimeout(() => setSwipeError(null), 4000);
+    }
   };
 
   const handleSkip = async (issue: Issue) => {
-    setSkipped((n) => n + 1);
-    await fetch("/api/history", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(issue),
-    });
+    sessionSkippedRef.current += 1;
+    setSkippedToday((prev) => (prev ?? 0) + 1);
+    try {
+      const res = await fetch("/api/history", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(issue),
+      });
+      if (!res.ok) throw new Error("skip failed");
+    } catch {
+      // Revert counter and return the card to the top of the deck.
+      sessionSkippedRef.current -= 1;
+      setSkippedToday((prev) => Math.max(0, (prev ?? 1) - 1));
+      cardStackRef.current?.pushBack();
+      setSwipeError("Couldn't record skip — issue returned to your queue");
+      setTimeout(() => setSwipeError(null), 4000);
+    }
   };
+
+  const savedCount = savedToday ?? 0;
+  const skippedCount = skippedToday ?? 0;
 
   const emptyState = (
     <div className="flex flex-col items-center justify-center h-[520px] gap-4 text-center px-6">
@@ -121,6 +163,21 @@ export function HuntPageInner() {
         className="mt-2 px-5 py-2 rounded-btn bg-accent text-background text-sm font-bold font-sans hover:bg-accent/90 transition-colors"
       >
         Switch Mode
+      </button>
+    </div>
+  );
+
+  const errorState = (
+    <div className="flex flex-col items-center justify-center h-[520px] gap-4 text-center px-6">
+      <p className="font-mono text-[14px] text-text-muted">Failed to load issues.</p>
+      <p className="font-sans text-[12px] text-text-muted leading-relaxed">
+        {error === "No GitHub token" ? "GitHub account not connected." : "Check your connection and try again."}
+      </p>
+      <button
+        onClick={() => setRetryKey((k) => k + 1)}
+        className="mt-2 px-5 py-2 rounded-btn bg-accent text-background text-sm font-bold font-sans hover:bg-accent/90 transition-colors"
+      >
+        Retry
       </button>
     </div>
   );
@@ -144,14 +201,25 @@ export function HuntPageInner() {
                   : `${total.toLocaleString()} issues matched · ${mode === "match" ? "your languages" : "explore mode"}`}
               </MonoText>
 
+              {/* Swipe error toast */}
+              {swipeError && (
+                <div className="mb-3 px-4 py-2 rounded-btn bg-[rgba(239,68,68,0.1)] border border-danger/30 text-center">
+                  <span className="font-mono text-[12px] text-danger">{swipeError}</span>
+                </div>
+              )}
+
               {loading ? (
                 <div className="flex items-center justify-center h-[520px]">
                   <span className="font-mono text-sm text-text-muted animate-pulse">
                     Fetching issues…
                   </span>
                 </div>
+              ) : error ? (
+                errorState
               ) : (
                 <CardStack
+                  key={`${mode}-${filters.goodFirstIssue}-${retryKey}`}
+                  ref={cardStackRef}
                   issues={issues}
                   onSave={handleSave}
                   onSkip={handleSkip}
@@ -165,9 +233,9 @@ export function HuntPageInner() {
           {/* Right panel */}
           <aside className="hidden lg:flex flex-col w-[220px] flex-shrink-0 border-l border-border px-5 py-6 overflow-y-auto">
             <HuntStats
-              swiped={saved + skipped}
-              saved={saved}
-              skipped={skipped}
+              swiped={savedCount + skippedCount}
+              saved={savedCount}
+              skipped={skippedCount}
             />
 
             <div className="border-t border-border my-5" />
@@ -177,28 +245,32 @@ export function HuntPageInner() {
             <div className="border-t border-border my-5" />
 
             <div>
-              <StreakBadge streak={streak} className="mb-4" />
-              <div className="flex flex-col gap-2">
-                <div className="flex gap-1">
-                  {weekDots.map((active, i) => (
-                    <div
-                      key={i}
-                      className="w-2 h-2 rounded-full"
-                      style={{ backgroundColor: active ? "#F97316" : "#1E1E2E" }}
-                    />
-                  ))}
+              {streak !== null && (
+                <StreakBadge streak={streak} className="mb-4" />
+              )}
+              {weekDots !== null && (
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-1">
+                    {weekDots.map((active, i) => (
+                      <div
+                        key={i}
+                        className="w-2 h-2 rounded-full"
+                        style={{ backgroundColor: active ? "#F97316" : "#1E1E2E" }}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex gap-1">
+                    {dayLabels.map((label, i) => (
+                      <span
+                        key={i}
+                        className="w-2 font-mono text-[10px] text-text-muted text-center"
+                      >
+                        {label}
+                      </span>
+                    ))}
+                  </div>
                 </div>
-                <div className="flex gap-1">
-                  {dayLabels.map((label, i) => (
-                    <span
-                      key={i}
-                      className="w-2 font-mono text-[10px] text-text-muted text-center"
-                    >
-                      {label}
-                    </span>
-                  ))}
-                </div>
-              </div>
+              )}
             </div>
           </aside>
         </main>

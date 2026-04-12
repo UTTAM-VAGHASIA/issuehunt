@@ -28,6 +28,36 @@ function activityLevel(
   return { level: "Moderate", score: 45 };
 }
 
+/** Estimate maintainer responsiveness from comment engagement and repo recency. */
+function computeResponseScore(
+  commentCount: number,
+  stars: number,
+  updatedAt: string
+): number {
+  const daysSince = (Date.now() - new Date(updatedAt).getTime()) / 86400000;
+  let score = 0;
+  // Recency of last repo activity
+  if (daysSince < 3) score += 50;
+  else if (daysSince < 7) score += 40;
+  else if (daysSince < 30) score += 25;
+  else score += 10;
+  // Comment engagement (each comment signals maintainer interaction)
+  score += Math.min(commentCount * 5, 30);
+  // Popular repos tend to have dedicated maintainer teams
+  if (stars > 10000) score += 20;
+  else if (stars > 1000) score += 10;
+  return Math.min(score, 100);
+}
+
+/** Human-readable estimate of response time based on repo update recency. */
+function computeResponseTime(updatedAt: string): string {
+  const daysSince = (Date.now() - new Date(updatedAt).getTime()) / 86400000;
+  if (daysSince < 3) return "< 3 days";
+  if (daysSince < 7) return "< 1 week";
+  if (daysSince < 30) return "< 1 month";
+  return "Varies";
+}
+
 const GH_HEADERS = (token: string) => ({
   Authorization: `Bearer ${token}`,
   Accept: "application/vnd.github+json",
@@ -107,6 +137,7 @@ export async function GET(request: NextRequest) {
     updated_at?: string;
     language?: string;
     owner?: { avatar_url?: string };
+    has_contributing?: boolean; // populated from community profile fetch
   }
 
   const searchData = await searchRes.json();
@@ -114,13 +145,30 @@ export async function GET(request: NextRequest) {
     (i) => !seenIds.has(i.id)
   );
 
-  // Fetch repo details for unique repos (in parallel)
+  // Fetch repo details + community profile for all unique repos in parallel.
+  // No artificial slice — every repo in the result set gets metadata.
   const repoUrls = [...new Set(unseen.map((i) => i.repository_url))] as string[];
   const repoMap: Record<string, GHRepo> = {};
   await Promise.all(
-    repoUrls.slice(0, 20).map(async (url) => {
-      const res = await fetch(url, { headers: GH_HEADERS(token) });
-      if (res.ok) repoMap[url] = await res.json() as GHRepo;
+    repoUrls.map(async (url) => {
+      const repoName = url.replace("https://api.github.com/repos/", "");
+      const [repoRes, profileRes] = await Promise.all([
+        fetch(url, { headers: GH_HEADERS(token) }),
+        fetch(
+          `https://api.github.com/repos/${repoName}/community/profile`,
+          { headers: GH_HEADERS(token) }
+        ),
+      ]);
+      if (repoRes.ok) {
+        const repoData = await repoRes.json() as GHRepo;
+        if (profileRes.ok) {
+          const profile = await profileRes.json() as { files?: { contributing?: unknown } };
+          repoData.has_contributing = profile.files?.contributing != null;
+        } else {
+          repoData.has_contributing = false;
+        }
+        repoMap[url] = repoData;
+      }
     })
   );
 
@@ -131,6 +179,7 @@ export async function GET(request: NextRequest) {
       repo.stargazers_count ?? 0,
       repo.updated_at ?? item.created_at
     );
+    const effectiveUpdatedAt = repo.updated_at ?? item.created_at;
     const repoName = item.repository_url.replace(
       "https://api.github.com/repos/",
       ""
@@ -152,11 +201,15 @@ export async function GET(request: NextRequest) {
       openedAgo: timeAgo(item.created_at),
       commentCount: item.comments,
       hasAssignee: item.assignee !== null,
-      hasContributing: true,
-      maintainerResponseTime: "~varies",
+      hasContributing: repo.has_contributing ?? false,
+      maintainerResponseTime: computeResponseTime(effectiveUpdatedAt),
       repoActivity: level,
       activityScore: score,
-      responseScore: 70,
+      responseScore: computeResponseScore(
+        item.comments,
+        repo.stargazers_count ?? 0,
+        effectiveUpdatedAt
+      ),
     };
   });
 
